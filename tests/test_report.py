@@ -108,6 +108,12 @@ def _make_mock_results():
         benchmark_epochs = 6
         warmup_epochs = 2
         sample_data_pct = 10.0
+
+        sample_epoch_data = {
+            500: [1.5, 1.6, 1.4, 1.55, 1.48, 1.52],
+            750: [2.2, 2.3, 2.1, 2.25, 2.18, 2.22],
+            1125: [3.3, 3.4, 3.2, 3.35, 3.28, 3.32],
+        }
         precision = "fp16"
         benchmark_task = None
 
@@ -133,7 +139,7 @@ class TestReportGeneration:
             assert "Green Love" in html
             assert "RTX 4090" in html
             assert "Benchmark Config" in html
-            assert "Epoch Timing" in html
+            assert "Epoch Timing per Sample Size" in html
             assert "Local Hardware" in html
             assert "Crusoe Cloud GPU Comparison" in html
             assert "Carbon Savings" in html
@@ -182,6 +188,8 @@ class TestReportContext:
             "version", "timestamp", "gpu_name", "precision",
             "mean_power_w", "est_total_time", "total_epochs",
             "benchmark_epochs", "warmup_epochs", "sample_data_pct",
+            "num_sample_sizes", "epochs_per_sample", "benchmark_epochs_total",
+            "local_cost_pct",
             "country_code", "epoch_bars", "median_epoch_time",
             "crusoe_rows", "co2_equivalences", "carbon_intensity",
             "carbon_intensity_source", "est_total_cost", "est_total_co2",
@@ -198,11 +206,13 @@ class TestReportContext:
         assert ctx["fastest"] is not None
         assert ctx["fastest"]["name"] == "H100 HGX 80GB"
 
-    def test_epoch_bars_count(self):
+    def test_epoch_chart_data(self):
         results = _make_mock_results()
         ctx = build_report_context(results)
-        # 2 warmup + 4 measured = 6 bars
-        assert len(ctx["epoch_bars"]) == 6
+        import json
+        data = json.loads(ctx["epoch_chart_data"])
+        assert len(data["datasets"]) == 3
+        assert data["datasets"][0]["n"] == 500
 
     def test_crusoe_rows_count(self):
         results = _make_mock_results()

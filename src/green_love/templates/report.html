@@ -399,7 +399,7 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
 
 <!-- Header -->
 <div class="header">
-    <h1>⚡ Green Love</h1>
+    <h1>GreenLove 💚</h1>
     <p class="subtitle">GPU Training Cost &amp; Carbon Analysis Report</p>
 </div>
 
@@ -418,7 +418,7 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
             <div class="value">{{ precision | upper }}</div>
         </div>
         <div class="stat orange">
-            <div class="label">Avg Power</div>
+            <div class="label">GPU Power Draw</div>
             <div class="value">{{ mean_power_w }}W</div>
         </div>
         <div class="stat red">
@@ -438,7 +438,7 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
         </div>
         <div class="stat">
             <div class="label">Benchmark Epochs</div>
-            <div class="value">{{ benchmark_epochs + warmup_epochs }} <small style="font-size: 0.75rem; color: var(--text-dim);">({{ warmup_epochs }} warmup)</small></div>
+            <div class="value">{{ num_sample_sizes }} &times; {{ epochs_per_sample }} = {{ benchmark_epochs_total }} <small style="font-size: 0.75rem; color: var(--text-dim);">({{ num_sample_sizes }} &times; {{ warmup_epochs }} warmup)</small></div>
         </div>
         <div class="stat">
             <div class="label">Data Sampled</div>
@@ -565,6 +565,9 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
                 </td>
                 <td><span style="color: var(--text-dim);">1.0x</span></td>
                 <td>
+                    <div class="bar-container">
+                        <div class="bar bar-cost" style="width: {{ local_cost_pct }}%"></div>
+                    </div>
                     <span class="value" style="color: var(--accent-orange);">{{ est_total_cost }}</span>
                     <span class="rate">(electricity)</span>
                 </td>
@@ -635,18 +638,10 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
 </div>
 
 
-<!-- Epoch Timing (commented out)
+<!-- Epoch Timing per Sample Size -->
 <div class="card card-full">
-    <h2><span class="icon">⏱️</span> Epoch Timing (Benchmark)</h2>
-    {% for ep in epoch_bars %}
-    <div class="epoch-row">
-        <span class="epoch-label">{{ ep.label }}</span>
-        <div class="bar-container">
-            <div class="bar {{ ep.bar_class }}" style="width: {{ ep.width_pct }}%"></div>
-        </div>
-        <span class="epoch-value">{{ ep.time_fmt }}</span>
-    </div>
-    {% endfor %}
+    <h2><span class="icon">⏱️</span> Epoch Timing per Sample Size</h2>
+    <canvas id="epochChart" style="width:100%; height:340px;"></canvas>
     <div class="epoch-summary">
         Median: <strong>{{ median_epoch_time }}s</strong>
         &nbsp;|&nbsp; Std: {{ std_epoch_time }}s
@@ -657,7 +652,109 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
         {% endif %}
     </div>
 </div>
--->
+
+<script>
+(function() {
+    var raw = {{ epoch_chart_data | safe }};
+    if (!raw.datasets.length) return;
+    var canvas = document.getElementById("epochChart");
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    var ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    var W = rect.width, H = rect.height;
+
+    /* palette */
+    var colors = [
+        "#a78bfa","#34d399","#f472b6","#60a5fa","#fbbf24",
+        "#f87171","#38bdf8","#c084fc","#4ade80","#fb923c"
+    ];
+
+    /* data bounds */
+    var allT = [];
+    raw.datasets.forEach(function(d){ d.times.forEach(function(t){ allT.push(t); }); });
+    var maxT = Math.max.apply(null, allT) * 1.12;
+    var minT = 0;
+    var nEpochs = raw.labels.length;
+
+    /* layout */
+    var pad = {top:28, right:20, bottom:44, left:64};
+    var pw = W - pad.left - pad.right;
+    var ph = H - pad.top - pad.bottom;
+
+    function xPos(i) { return pad.left + (i / Math.max(nEpochs - 1, 1)) * pw; }
+    function yPos(v) { return pad.top + (1 - (v - minT) / (maxT - minT)) * ph; }
+
+    /* grid */
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    var nGrid = 5;
+    for (var g = 0; g <= nGrid; g++) {
+        var gy = pad.top + ph * g / nGrid;
+        ctx.beginPath(); ctx.moveTo(pad.left, gy); ctx.lineTo(W - pad.right, gy); ctx.stroke();
+    }
+
+    /* Y axis labels */
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.textAlign = "right";
+    for (var g = 0; g <= nGrid; g++) {
+        var val = maxT - (maxT - minT) * g / nGrid;
+        var gy = pad.top + ph * g / nGrid;
+        ctx.fillText(val.toFixed(2) + "s", pad.left - 8, gy + 4);
+    }
+
+    /* X axis labels */
+    ctx.textAlign = "center";
+    var step = Math.max(1, Math.floor(nEpochs / 10));
+    for (var i = 0; i < nEpochs; i += step) {
+        ctx.fillText(raw.labels[i], xPos(i), H - pad.bottom + 18);
+    }
+    ctx.fillText("Epoch", W / 2, H - 6);
+
+    /* Y axis title */
+    ctx.save();
+    ctx.translate(14, H / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("Time (s)", 0, 0);
+    ctx.restore();
+
+    /* lines */
+    raw.datasets.forEach(function(ds, di) {
+        var c = colors[di % colors.length];
+        ctx.strokeStyle = c;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (var i = 0; i < ds.times.length; i++) {
+            var x = xPos(i), y = yPos(ds.times[i]);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        /* dots */
+        ctx.fillStyle = c;
+        for (var i = 0; i < ds.times.length; i++) {
+            ctx.beginPath();
+            ctx.arc(xPos(i), yPos(ds.times[i]), 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    });
+
+    /* legend */
+    var lx = pad.left + 8, ly = pad.top + 6;
+    ctx.font = "11px system-ui, sans-serif";
+    raw.datasets.forEach(function(ds, di) {
+        var c = colors[di % colors.length];
+        ctx.fillStyle = c;
+        ctx.fillRect(lx, ly + di * 18, 14, 10);
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.textAlign = "left";
+        ctx.fillText("n=" + ds.n, lx + 20, ly + di * 18 + 9);
+    });
+})();
+</script>
 
 
 </div><!-- grid -->

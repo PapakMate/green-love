@@ -354,7 +354,7 @@ estimator = GreenLoveEstimator(
 10. **Power Monitoring**: GPU power sampled via NVML → total energy (kWh)
 11. **CO₂ & Cost**: Energy × grid carbon intensity / electricity price (offline tables for 70+ countries, or live via Electricity Maps API)
 12. **Crusoe Comparison**: Speed ratios from Lambda Labs benchmarks (or TFLOPS+bandwidth weighted fallback) → estimated time, cost, CO₂ for each Crusoe GPU
-13. **Report**: Interactive HTML dashboard with CSS-only visualizations
+13. **Report**: Interactive HTML dashboard with epoch timing chart (time per epoch for each sample size), cost/CO₂ comparisons, and Crusoe GPU recommendations
 14. **Prompt**: Terminal prompt to continue training or stop
 
 ---

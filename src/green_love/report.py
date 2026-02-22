@@ -5,6 +5,7 @@ Builds a Jinja2 context dictionary from BenchmarkResults and renders
 the vice-style HTML report template.
 """
 
+import json
 import os
 import webbrowser
 import logging
@@ -99,6 +100,30 @@ def _build_epoch_bars(results) -> list:
         })
 
     return bars
+
+
+def _build_epoch_chart_data(results) -> str:
+    """
+    Build JSON data for the per-sample-size epoch timing chart.
+    Returns JSON string: {labels: [1,2,...], datasets: [{n, times}, ...]}.
+    """
+    data = getattr(results, "sample_epoch_data", None)
+    if not data:
+        return json.dumps({"labels": [], "datasets": []})
+
+    # Sort by sample size
+    sorted_sizes = sorted(data.keys())
+    max_epochs = max(len(data[k]) for k in sorted_sizes) if sorted_sizes else 0
+    labels = list(range(1, max_epochs + 1))
+
+    datasets = []
+    for k in sorted_sizes:
+        datasets.append({
+            "n": k,
+            "times": [round(t, 4) for t in data[k]],
+        })
+
+    return json.dumps({"labels": labels, "datasets": datasets})
 
 
 def _build_crusoe_rows(results) -> list:
@@ -298,14 +323,18 @@ def build_report_context(results) -> Dict[str, Any]:
         # Benchmark config
         "total_epochs": r.total_epochs,
         "benchmark_epochs": r.benchmark_epochs - r.warmup_epochs,
+        "benchmark_epochs_total": r.benchmark_epochs,
+        "num_sample_sizes": len(r.sample_sizes_used) if r.sample_sizes_used else 1,
+        "epochs_per_sample": (r.benchmark_epochs // max(len(r.sample_sizes_used), 1)) if r.sample_sizes_used else r.benchmark_epochs,
         "warmup_epochs": r.warmup_epochs,
-        "sample_data_pct": f"{r.sample_data_pct:.0f}",
+        "sample_data_pct": f"{max(r.sample_data_pct, 0.01):.2f}",
         "sample_data_pct_val": r.sample_data_pct,
         "country_code": r.country_code,
         "benchmark_task": r.benchmark_task,
 
         # Epoch timing
         "epoch_bars": _build_epoch_bars(r),
+        "epoch_chart_data": _build_epoch_chart_data(r),
         "median_epoch_time": f"{r.median_epoch_time:.2f}",
         "std_epoch_time": f"{r.std_epoch_time:.3f}",
         "cv_epoch_time": f"{r.cv_epoch_time * 100:.1f}",
@@ -324,6 +353,14 @@ def build_report_context(results) -> Dict[str, Any]:
         "carbon_intensity_source": r.carbon_intensity_source,
         "carbon_source_live": carbon_source_live,
         "electricity_price_source": r.electricity_price_source,
+
+        # Local cost bar pct (relative to max of local + cloud costs)
+        "local_cost_pct": round(
+            r.est_total_cost_usd / max(
+                max([r.est_total_cost_usd] + [e.on_demand_cost for e in r.crusoe_estimates]),
+                0.001,
+            ) * 100, 1
+        ),
 
         # Crusoe comparison
         "crusoe_rows": _build_crusoe_rows(r),

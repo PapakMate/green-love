@@ -158,6 +158,9 @@ class BenchmarkResults:
     co2_savings_kg: float
     co2_equivalences: List[CO2Equivalence]
 
+    # Raw multi-sample data: {sample_size: [epoch_times]}
+    sample_epoch_data: Dict[int, List[float]]
+
     # Config
     total_epochs: int
     benchmark_epochs: int
@@ -780,6 +783,7 @@ class GreenLoveEstimator:
             crusoe_estimates=crusoe_estimates,
             co2_savings_kg=co2_savings,
             co2_equivalences=co2_equivs,
+            sample_epoch_data=dict(all_data),
             total_epochs=self.total_epochs,
             benchmark_epochs=total_bench_epochs,
             warmup_epochs=self.warmup_epochs,
