@@ -386,6 +386,24 @@ Our architecture is designed to extend naturally — with more time, proper data
 
 ---
 
+## Challenge Fit Statements
+
+How our project aligns with each sponsor challenge:
+
+- **Best Use of Data (Susquehanna)**:
+  This is a method you certainly haven't seen today. We solved the problem by sampling data ourselves and leveraging knowledge of data behavior to extrapolate distant data points — turning a tiny fraction of your dataset into accurate full-scale predictions.
+
+- **Best Use of Crusoe Inference API (Crusoe)**:
+  We integrated the Crusoe API to benchmark training speed on the cloud against local hardware. This yields significantly more accurate cost and time estimations.
+
+- **Best Use of ElevenLabs (ElevenLabs)**:
+  We used ElevenLabs to generate the voiceover for our project demo and pitch presentation.
+
+- **Best Use of Claude (Anthropic)**:
+  When we couldn't source specific data (e.g., GPU specs or regional carbon intensity), Claude served as an intelligent fallback to retrieve and validate the missing information.
+
+---
+
 ## Data Sources
 
 | Data | Source | Last Updated |

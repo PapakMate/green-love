@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "green-love"
-version = "0.1.0"
+version = "0.1.5"
 description = "PyTorch training estimator plugin — benchmark locally, estimate full training cost/time/CO₂, compare against Crusoe Cloud GPUs"
 readme = "README.md"
 license = {text = "MIT"}
@@ -34,9 +34,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/green-love/green-love"
-Repository = "https://github.com/green-love/green-love"
-"Bug Tracker" = "https://github.com/green-love/green-love/issues"
+Homepage = "https://github.com/PapakMate/green-love"
+Repository = "https://github.com/PapakMate/green-love"
+"Bug Tracker" = "https://github.com/PapakMate/green-love/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "ruff>=0.1"]
