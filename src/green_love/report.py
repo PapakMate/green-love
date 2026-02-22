@@ -452,7 +452,17 @@ def generate_report(
 
     # Write file
     out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
+    try:
+        out_path.mkdir(parents=True, exist_ok=True)
+    except PermissionError:
+        fallback = Path.home() / "crusoe_reports"
+        logger.warning(
+            f"Cannot create '{out_path}' (permission denied). "
+            f"Falling back to '{fallback}'"
+        )
+        print(f"\n  ⚠️  No write permission to '{out_path}', using '{fallback}' instead.")
+        out_path = fallback
+        out_path.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"green_love_report_{timestamp}.html"
