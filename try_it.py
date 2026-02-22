@@ -157,10 +157,6 @@ def train(total_epochs: int = 500):
         benchmark_task="resnet50",
         precision="fp16",
         auto_open_report=True,
-        # Heavy model (18M params, 128×128 images):
-        #  - higher epoch budget (one forward/backward pass takes ~1s)
-        #  - fewer exploration epochs so each sample size stays under 20s
-        single_epoch_budget=5.0,
         exploration_epochs=10,
     )
 

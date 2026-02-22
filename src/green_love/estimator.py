@@ -382,13 +382,11 @@ class GreenLoveEstimator:
 
     def _find_representative_sample_size(self) -> Tuple[int, List[float]]:
         """
-        Adaptive algorithm with a strict time budget:
-        Start with (n, Be) and a total training budget of `single_epoch_budget`
-        seconds.  Train epochs until the budget is exhausted, then decide:
-          Case 1: first epoch didn't finish within budget → n = n/10, retry
+        Adaptive algorithm:
+        Start with (n, Be). Iteratively adjust n:
+          Case 1: first epoch > budget → n = n/10, retry
           Case 2: 1 ≤ completed < Be → n_new = n * completed (EXIT)
-          Case 3: all Be epochs done within budget (too fast)
-                  → n = n * target/total, retry
+          Case 3: all Be epochs done (too fast) → n = n * target/total, retry
         Returns (representative_n, epoch_times_from_last_run).
         """
         n = min(self.initial_sample_size, self._N)
@@ -408,8 +406,7 @@ class GreenLoveEstimator:
             )
 
             epoch_times: List[float] = []
-            budget_exceeded = False
-            wall_start = time.time()
+            case1_hit = False
 
             for epoch in range(Be):
                 self._cuda_sync()
@@ -419,49 +416,47 @@ class GreenLoveEstimator:
                 elapsed = time.time() - t0
                 epoch_times.append(elapsed)
 
-                total_elapsed = time.time() - wall_start
-                if total_elapsed >= budget:
-                    budget_exceeded = True
-                    break
+                if elapsed > budget:
+                    completed = len(epoch_times)
+                    if completed == 1:
+                        # Case 1: first epoch > budget → shrink by 10x
+                        n_new = max(n // 10, min_n)
+                        print(f"    Attempt {attempt + 1}: "
+                              f"epoch={elapsed:.3f}s > {budget}s "
+                              f"→ n: {n} → {n_new}")
+                        if n_new == n:
+                            print(f"    Cannot reduce further (min={min_n})")
+                            return n, epoch_times
+                        n = n_new
+                        case1_hit = True
+                        break
+                    else:
+                        # Case 2: 1 ≤ completed < Be → EXIT
+                        n_new = max(min_n, min(n * completed, self._N))
+                        print(f"    Attempt {attempt + 1}: "
+                              f"{completed}/{Be} epochs "
+                              f"→ n_new = {n}*{completed} = {n_new}  (EXIT)")
+                        # Re-run at n_new to collect clean epoch times
+                        self._reset_model_optimizer()
+                        loader2 = _make_subset_loader(
+                            self.train_dataset, n_new, self.batch_size
+                        )
+                        final_times: List[float] = []
+                        for _e in range(Be):
+                            self._cuda_sync()
+                            t0 = time.time()
+                            self._run_one_epoch(loader2)
+                            self._cuda_sync()
+                            final_times.append(time.time() - t0)
+                        return n_new, final_times
 
-            completed = len(epoch_times)
+            if case1_hit:
+                continue  # retry with smaller n
+
+            # All Be epochs completed
             total_time = sum(epoch_times)
 
-            if budget_exceeded:
-                if completed <= 1 and epoch_times[0] >= budget:
-                    # Case 1: first epoch didn't finish within budget
-                    # → shrink by 10x
-                    n_new = max(n // 10, min_n)
-                    print(f"    Attempt {attempt + 1}: "
-                          f"first epoch={epoch_times[0]:.3f}s >= {budget}s "
-                          f"→ n: {n} → {n_new}")
-                    if n_new == n:
-                        print(f"    Cannot reduce further (min={min_n})")
-                        return n, epoch_times
-                    n = n_new
-                    continue  # retry with smaller n
-                else:
-                    # Case 2: 1 ≤ completed < Be → EXIT
-                    n_new = max(min_n, min(n * completed, self._N))
-                    print(f"    Attempt {attempt + 1}: "
-                          f"{completed}/{Be} epochs in {total_time:.2f}s "
-                          f"→ n_new = {n}*{completed} = {n_new}  (EXIT)")
-                    # Re-run at n_new to collect clean epoch times
-                    self._reset_model_optimizer()
-                    loader2 = _make_subset_loader(
-                        self.train_dataset, n_new, self.batch_size
-                    )
-                    final_times: List[float] = []
-                    for _e in range(Be):
-                        self._cuda_sync()
-                        t0 = time.time()
-                        self._run_one_epoch(loader2)
-                        self._cuda_sync()
-                        final_times.append(time.time() - t0)
-                    return n_new, final_times
-
-            # Case 3: all Be epochs completed within budget (too fast)
-            # → scale up n
+            # Case 3: all epochs done, scale to target time
             if total_time < 1e-6:
                 n_new = min(n * 100, self._N)
             else:

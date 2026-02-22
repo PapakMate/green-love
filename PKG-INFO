@@ -1,3 +1,36 @@
+Metadata-Version: 2.4
+Name: green-love
+Version: 0.1.6
+Summary: PyTorch training estimator plugin — benchmark locally, estimate full training cost/time/CO₂, compare against Crusoe Cloud GPUs
+Author: Green Love Contributors
+License: MIT
+Project-URL: Homepage, https://github.com/PapakMate/green-love
+Project-URL: Repository, https://github.com/PapakMate/green-love
+Project-URL: Bug Tracker, https://github.com/PapakMate/green-love/issues
+Keywords: pytorch,training,estimator,green-computing,crusoe,carbon,co2,gpu,benchmark,green-love
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch>=2.0
+Requires-Dist: nvidia-ml-py>=12.0
+Requires-Dist: jinja2>=3.1
+Requires-Dist: requests>=2.28
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: ruff>=0.1; extra == "dev"
+Dynamic: license-file
+
 # Green Love 💚
 
 A PyTorch plugin that benchmarks your training loop locally, estimates total training time, electricity cost, and CO₂ emissions, then compares against all [Crusoe Cloud](https://www.crusoe.ai/) GPU options — presented in a polished interactive HTML report.
