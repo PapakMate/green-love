@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "green-love"
+version = "0.1.0"
+description = "PyTorch training estimator plugin — benchmark locally, estimate full training cost/time/CO₂, compare against Crusoe Cloud GPUs"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Green Love Contributors"}
+]
+keywords = ["pytorch", "training", "estimator", "green-computing", "crusoe", "carbon", "co2", "gpu", "benchmark", "green-love"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "torch>=2.0",
+    "nvidia-ml-py>=12.0",
+    "jinja2>=3.1",
+    "requests>=2.28",
+]
+
+[project.urls]
+Homepage = "https://github.com/green-love/green-love"
+Repository = "https://github.com/green-love/green-love"
+"Bug Tracker" = "https://github.com/green-love/green-love/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff>=0.1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+green_love = ["templates/*.html", "data/*.json"]

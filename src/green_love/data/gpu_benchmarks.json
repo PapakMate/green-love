@@ -1,0 +1,265 @@
+{
+  "metadata": {
+    "description": "GPU training throughput benchmarks from Lambda Labs",
+    "source": "https://github.com/lambdal/deeplearning-benchmark/tree/master/pytorch/csv_v1_v2",
+    "last_updated": "2025-12",
+    "throughput_unit": "samples/second",
+    "tasks": ["bert_base_squad", "bert_large_squad", "gnmt", "resnet50", "tacotron2", "waveglow"]
+  },
+  "fp16": {
+    "Quadro RTX 8000": {
+      "watt": 260,
+      "bert_base_squad": 146,
+      "bert_large_squad": 50,
+      "gnmt": 88498,
+      "resnet50": 651,
+      "tacotron2": 18587,
+      "waveglow": 43964
+    },
+    "V100 16GB": {
+      "watt": 300,
+      "bert_base_squad": 189,
+      "bert_large_squad": 57,
+      "gnmt": 79111,
+      "resnet50": 833,
+      "tacotron2": 12611,
+      "waveglow": 47253
+    },
+    "RTX 3090": {
+      "watt": 350,
+      "bert_base_squad": 172,
+      "bert_large_squad": 52,
+      "gnmt": 86080,
+      "resnet50": 905,
+      "tacotron2": 25018,
+      "waveglow": 97100
+    },
+    "A10": {
+      "watt": 150,
+      "bert_base_squad": 135,
+      "bert_large_squad": 42,
+      "gnmt": 67836,
+      "resnet50": 638,
+      "tacotron2": 16900,
+      "waveglow": 80357
+    },
+    "A100 40GB PCIe": {
+      "watt": 250,
+      "bert_base_squad": 368,
+      "bert_large_squad": 117,
+      "gnmt": 186947,
+      "resnet50": 1396,
+      "tacotron2": 38131,
+      "waveglow": 195108
+    },
+    "A100 80GB PCIe": {
+      "watt": 300,
+      "bert_base_squad": 415,
+      "bert_large_squad": 140,
+      "gnmt": 227949,
+      "resnet50": 1527,
+      "tacotron2": 58956,
+      "waveglow": 234859
+    },
+    "A100 80GB SXM4": {
+      "watt": 400,
+      "bert_base_squad": 443,
+      "bert_large_squad": 152,
+      "gnmt": 243500,
+      "resnet50": 1582,
+      "tacotron2": 59716,
+      "waveglow": 244438
+    },
+    "RTX A6000": {
+      "watt": 300,
+      "bert_base_squad": 198,
+      "bert_large_squad": 68,
+      "gnmt": 116438,
+      "resnet50": 916,
+      "tacotron2": 25496,
+      "waveglow": 116866
+    },
+    "RTX 6000 Ada": {
+      "watt": 300,
+      "bert_base_squad": 255,
+      "bert_large_squad": 79,
+      "gnmt": 160184,
+      "resnet50": 1146,
+      "tacotron2": 40331,
+      "waveglow": 156904
+    },
+    "RTX 4090": {
+      "watt": 450,
+      "bert_base_squad": 297,
+      "bert_large_squad": 93,
+      "gnmt": 159511,
+      "resnet50": 1301,
+      "tacotron2": 32661,
+      "waveglow": 160816
+    },
+    "H100 80GB PCIe": {
+      "watt": 350,
+      "bert_base_squad": 580,
+      "bert_large_squad": 204,
+      "gnmt": 325525,
+      "resnet50": 1976,
+      "tacotron2": 55032,
+      "waveglow": 308718
+    },
+    "H100 80GB SXM5": {
+      "watt": 700,
+      "bert_base_squad": 858,
+      "bert_large_squad": 311,
+      "gnmt": 473757,
+      "resnet50": 2791,
+      "tacotron2": 85457,
+      "waveglow": 472240
+    },
+    "GH200 96GB": {
+      "watt": 700,
+      "bert_base_squad": 838,
+      "bert_large_squad": 296,
+      "gnmt": 536445,
+      "resnet50": 2844,
+      "tacotron2": 94393,
+      "waveglow": 481226
+    },
+    "B200 192GB SXM5": {
+      "watt": 1000,
+      "bert_base_squad": 1405,
+      "bert_large_squad": 523,
+      "gnmt": 852308,
+      "resnet50": 3076,
+      "tacotron2": 190871,
+      "waveglow": 910911
+    }
+  },
+  "fp32": {
+    "Quadro RTX 8000": {
+      "watt": 260,
+      "bert_base_squad": 41,
+      "bert_large_squad": 12,
+      "gnmt": 21616,
+      "resnet50": 274,
+      "tacotron2": 17717,
+      "waveglow": 44068
+    },
+    "V100 16GB": {
+      "watt": 300,
+      "bert_base_squad": 42,
+      "bert_large_squad": 12,
+      "gnmt": 24109,
+      "resnet50": 369,
+      "tacotron2": 12502,
+      "waveglow": 47394
+    },
+    "RTX 3090": {
+      "watt": 350,
+      "bert_base_squad": 85,
+      "bert_large_squad": 24,
+      "gnmt": 44869,
+      "resnet50": 513,
+      "tacotron2": 25350,
+      "waveglow": 97404
+    },
+    "A10": {
+      "watt": 150,
+      "bert_base_squad": 70,
+      "bert_large_squad": 19,
+      "gnmt": 37527,
+      "resnet50": 349,
+      "tacotron2": 16757,
+      "waveglow": 79965
+    },
+    "A100 40GB PCIe": {
+      "watt": 250,
+      "bert_base_squad": 179,
+      "bert_large_squad": 53,
+      "gnmt": 101476,
+      "resnet50": 882,
+      "tacotron2": 37999,
+      "waveglow": 194634
+    },
+    "A100 80GB PCIe": {
+      "watt": 300,
+      "bert_base_squad": 224,
+      "bert_large_squad": 70,
+      "gnmt": 120980,
+      "resnet50": 1014,
+      "tacotron2": 58992,
+      "waveglow": 225014
+    },
+    "A100 80GB SXM4": {
+      "watt": 400,
+      "bert_base_squad": 239,
+      "bert_large_squad": 75,
+      "gnmt": 129911,
+      "resnet50": 1066,
+      "tacotron2": 55464,
+      "waveglow": 231379
+    },
+    "RTX A6000": {
+      "watt": 300,
+      "bert_base_squad": 101,
+      "bert_large_squad": 33,
+      "gnmt": 62271,
+      "resnet50": 514,
+      "tacotron2": 25135,
+      "waveglow": 117073
+    },
+    "RTX 6000 Ada": {
+      "watt": 300,
+      "bert_base_squad": 136,
+      "bert_large_squad": 44,
+      "gnmt": 80854,
+      "resnet50": 647,
+      "tacotron2": 31837,
+      "waveglow": 157877
+    },
+    "RTX 4090": {
+      "watt": 450,
+      "bert_base_squad": 137,
+      "bert_large_squad": 44,
+      "gnmt": 84598,
+      "resnet50": 721,
+      "tacotron2": 32910,
+      "waveglow": 161590
+    },
+    "H100 80GB PCIe": {
+      "watt": 350,
+      "bert_base_squad": 302,
+      "bert_large_squad": 100,
+      "gnmt": 165405,
+      "resnet50": 1248,
+      "tacotron2": 53989,
+      "waveglow": 299807
+    },
+    "H100 80GB SXM5": {
+      "watt": 700,
+      "bert_base_squad": 432,
+      "bert_large_squad": 145,
+      "gnmt": 247187,
+      "resnet50": 1895,
+      "tacotron2": 84736,
+      "waveglow": 456305
+    },
+    "GH200 96GB": {
+      "watt": 700,
+      "bert_base_squad": 398,
+      "bert_large_squad": 131,
+      "gnmt": 262102,
+      "resnet50": 2063,
+      "tacotron2": 74653,
+      "waveglow": 472347
+    },
+    "B200 192GB SXM5": {
+      "watt": 1000,
+      "bert_base_squad": 855,
+      "bert_large_squad": 281,
+      "gnmt": 433179,
+      "resnet50": 2967,
+      "tacotron2": 194888,
+      "waveglow": 883773
+    }
+  }
+}

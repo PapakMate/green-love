@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Green Love Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0a0e17;
+    --card-bg: #131a2b;
+    --card-border: #1e2d4a;
+    --text: #e2e8f0;
+    --text-dim: #8892a8;
+    --accent: #38bdf8;
+    --accent-green: #34d399;
+    --accent-orange: #fb923c;
+    --accent-red: #f87171;
+    --accent-purple: #a78bfa;
+    --crusoe-green: #22c55e;
+    --bar-local: #f87171;
+    --bar-crusoe: #38bdf8;
+    --bar-cost: #fb923c;
+    --bar-epoch: #a78bfa;
+    --bar-warmup: #64748b;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+}
+
+.container { max-width: 1100px; margin: 0 auto; }
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--crusoe-green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.header .subtitle {
+    font-size: 1rem;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+.card-full { grid-column: 1 / -1; }
+
+.card h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.card h2 .icon { font-size: 1.4rem; }
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+}
+.stat {
+    background: rgba(56, 189, 248, 0.05);
+    border: 1px solid rgba(56, 189, 248, 0.1);
+    border-radius: 8px;
+    padding: 0.8rem;
+}
+.stat .label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    margin-bottom: 0.2rem;
+}
+.stat .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+.stat.green .value { color: var(--accent-green); }
+.stat.orange .value { color: var(--accent-orange); }
+.stat.red .value { color: var(--accent-red); }
+.stat.purple .value { color: var(--accent-purple); }
+
+/* Epoch timing bars */
+.epoch-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+.epoch-label {
+    width: 130px;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+.epoch-label small { color: var(--accent-orange); }
+.bar-container {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 80px;
+    flex: 1;
+    position: relative;
+}
+.bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+.bar-warmup { background: var(--bar-warmup); }
+.bar-epoch { background: var(--bar-epoch); }
+.bar-local { background: var(--bar-local); }
+.bar-crusoe { background: var(--bar-crusoe); }
+.bar-cost { background: var(--bar-cost); }
+.epoch-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    width: 70px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* Summary line */
+.epoch-summary {
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--card-border);
+    font-size: 0.9rem;
+    color: var(--text-dim);
+}
+.epoch-summary strong { color: var(--accent-purple); font-weight: 700; }
+
+/* GPU comparison table */
+table { width: 100%; border-collapse: collapse; }
+th {
+    text-align: left;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--card-border);
+}
+td {
+    padding: 0.8rem;
+    border-bottom: 1px solid rgba(30, 45, 74, 0.5);
+    vertical-align: middle;
+    font-size: 0.95rem;
+}
+tr:last-child td { border-bottom: none; }
+.local-row { background: rgba(248, 113, 113, 0.05); }
+.local-row td { border-bottom: 2px solid var(--card-border); }
+.gpu-name { font-weight: 700; }
+.gpu-name small { font-weight: 400; color: var(--text-dim); font-size: 0.85rem; }
+.speedup { color: var(--crusoe-green); font-weight: 700; font-size: 1rem; }
+td .value { font-size: 0.95rem; font-weight: 600; }
+td .rate { font-size: 0.8rem; color: var(--text-dim); margin-left: 4px; }
+td .range-text { font-size: 0.75rem; color: var(--text-dim); margin-left: 4px; }
+
+.range-bar { position: relative; }
+.bar-range {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(56, 189, 248, 0.15);
+    border-radius: 4px;
+    border: 1px dashed rgba(56, 189, 248, 0.3);
+}
+
+/* CO2 cell */
+.co2-cell { display: flex; align-items: center; gap: 0.5rem; }
+.co2-zero { color: var(--crusoe-green); font-weight: 600; }
+.savings-badge {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--crusoe-green);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* Best value / fastest row highlight */
+tr.best-row td { background: rgba(34, 197, 94, 0.06); }
+tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-left: 6px;
+}
+.badge-value { background: rgba(34,197,94,0.2); color: var(--crusoe-green); }
+.badge-fast { background: rgba(56,189,248,0.2); color: var(--accent); }
+
+/* Carbon comparison */
+.carbon-comparison { display: flex; align-items: center; gap: 2rem; margin-top: 1rem; }
+.carbon-bar-outer { flex: 1; }
+.carbon-bar-inner {
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-weight: 700;
+    font-size: 1rem;
+}
+.carbon-local { background: linear-gradient(90deg, var(--accent-red), var(--accent-orange)); }
+.carbon-crusoe {
+    background: linear-gradient(90deg, var(--crusoe-green), var(--accent-green));
+    max-width: 80px;
+}
+.carbon-label {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 0.3rem;
+}
+.carbon-arrow { font-size: 2.2rem; color: var(--crusoe-green); }
+
+/* CO2 equivalence cards */
+.equiv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.equiv-card {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 1.2rem;
+    text-align: center;
+    border: 1px solid var(--card-border);
+    transition: border-color 0.2s, transform 0.2s;
+}
+.equiv-card:hover {
+    border-color: var(--crusoe-green);
+    transform: translateY(-2px);
+}
+.equiv-card .equiv-icon { font-size: 2rem; margin-bottom: 0.4rem; display: block; }
+.equiv-card .equiv-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--crusoe-green);
+}
+.equiv-card .equiv-unit {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+}
+.equiv-card .equiv-desc {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+}
+
+/* Recommendation */
+.rec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.2rem;
+    margin-top: 1rem;
+}
+.rec-card {
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 2px solid;
+}
+.rec-best-value {
+    background: rgba(34, 197, 94, 0.06);
+    border-color: var(--crusoe-green);
+}
+.rec-fastest {
+    background: rgba(56, 189, 248, 0.06);
+    border-color: var(--accent);
+}
+.rec-card .rec-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+.rec-best-value .rec-badge { color: var(--crusoe-green); }
+.rec-fastest .rec-badge { color: var(--accent); }
+.rec-card .rec-gpu {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+.rec-best-value .rec-gpu { color: var(--crusoe-green); }
+.rec-fastest .rec-gpu { color: var(--accent); }
+.rec-card .rec-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+}
+.rec-card .rec-metric .rec-metric-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.rec-card .rec-metric .rec-metric-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--card-border);
+    color: var(--text-dim);
+    font-size: 0.85rem;
+}
+.footer a { color: var(--accent); text-decoration: none; }
+
+/* Savings overview */
+.savings-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.savings-card {
+    background: rgba(0,0,0,0.25);
+    border-radius: 10px;
+    padding: 1.2rem;
+    text-align: center;
+}
+.savings-card .savings-icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.4rem;
+}
+.savings-card .savings-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--accent-green);
+}
+.savings-card .savings-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 0.2rem;
+}
+
+/* Data source badges */
+.data-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.badge-live { background: rgba(34,197,94,0.2); color: var(--accent-green); border: 1px solid rgba(34,197,94,0.4); }
+.badge-default { background: rgba(100,116,139,0.2); color: var(--text-dim); border: 1px solid rgba(100,116,139,0.3); }
+
+@media (max-width: 768px) {
+    .grid { grid-template-columns: 1fr; }
+    .rec-options { grid-template-columns: 1fr; }
+    body { padding: 1rem; }
+    .carbon-comparison { flex-direction: column; gap: 1rem; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<div class="header">
+    <h1>⚡ Green Love</h1>
+    <p class="subtitle">GPU Training Cost &amp; Carbon Analysis Report</p>
+</div>
+
+<div class="grid">
+
+<!-- Local Hardware -->
+<div class="card">
+    <h2><span class="icon">🖥️</span> Local Hardware</h2>
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="label">GPU</div>
+            <div class="value" style="font-size: 1.1rem;">{{ gpu_name }}</div>
+        </div>
+        <div class="stat purple">
+            <div class="label">Precision</div>
+            <div class="value">{{ precision | upper }}</div>
+        </div>
+        <div class="stat orange">
+            <div class="label">Avg Power</div>
+            <div class="value">{{ mean_power_w }}W</div>
+        </div>
+        <div class="stat red">
+            <div class="label">Est. Local Total</div>
+            <div class="value" style="font-size: 1.1rem;">{{ est_total_time }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Benchmark Config -->
+<div class="card">
+    <h2><span class="icon">📏</span> Benchmark Config</h2>
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="label">Total Epochs</div>
+            <div class="value">{{ total_epochs }}</div>
+        </div>
+        <div class="stat">
+            <div class="label">Benchmark Epochs</div>
+            <div class="value">{{ benchmark_epochs + warmup_epochs }} <small style="font-size: 0.75rem; color: var(--text-dim);">({{ warmup_epochs }} warmup)</small></div>
+        </div>
+        <div class="stat">
+            <div class="label">Data Sampled</div>
+            <div class="value">{{ sample_data_pct }}%</div>
+        </div>
+        <div class="stat green">
+            <div class="label">Location</div>
+            <div class="value">{{ country_code }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Savings Overview -->
+{% if best_value %}
+<div class="card card-full" style="margin-bottom: 1.5rem;">
+    <h2><span class="icon">📊</span> Savings Overview — Crusoe vs Local</h2>
+    <div class="savings-overview">
+        <div class="savings-card">
+            <div class="savings-icon">⏱️</div>
+            <div class="savings-value">{{ time_saved }}</div>
+            <div class="savings-label">Time saved</div>
+        </div>
+        <div class="savings-card">
+            <div class="savings-icon">💰</div>
+            <div class="savings-value" style="color: {{ cost_diff_color }};">{{ cost_diff_fmt }}</div>
+            <div class="savings-label">{{ cost_diff_label }}</div>
+        </div>
+        <div class="savings-card">
+            <div class="savings-icon">🌍</div>
+            <div class="savings-value">{{ est_total_co2 }}</div>
+            <div class="savings-label">CO₂ saved (100%)</div>
+        </div>
+        <div class="savings-card">
+            <div class="savings-icon">⚡</div>
+            <div class="savings-value">{{ best_value.speedup }}x</div>
+            <div class="savings-label">Faster ({{ best_value.name }})</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+<!-- Recommendation -->
+{% if best_value or fastest %}
+<div class="card card-full">
+    <h2><span class="icon">💡</span> Recommendation</h2>
+    <div class="rec-grid">
+        {% if best_value %}
+        <div class="rec-card rec-best-value">
+            <div class="rec-badge">💰 Best Value</div>
+            <div class="rec-gpu">{{ best_value.name }}</div>
+            <div class="rec-metrics">
+                <div class="rec-metric">
+                    <div class="rec-metric-label">Time</div>
+                    <div class="rec-metric-value">{{ best_value_time }}</div>
+                </div>
+                <div class="rec-metric">
+                    <div class="rec-metric-label">Cost</div>
+                    <div class="rec-metric-value">{{ best_value_cost }}</div>
+                </div>
+                <div class="rec-metric">
+                    <div class="rec-metric-label">Speedup</div>
+                    <div class="rec-metric-value">{{ best_value.speedup }}x</div>
+                </div>
+                <div class="rec-metric">
+                    <div class="rec-metric-label">Range</div>
+                    <div class="rec-metric-value" style="font-size: 0.85rem;">{{ best_value_time_lower }}–{{ best_value_time_upper }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if fastest %}
+        <div class="rec-card rec-fastest">
+            <div class="rec-badge">⚡ Fastest</div>
+            <div class="rec-gpu">{{ fastest.name }}</div>
+            <div class="rec-metrics">
+                <div class="rec-metric">
+                    <div class="rec-metric-label">Time</div>
+                    <div class="rec-metric-value">{{ fastest_time }}</div>
+                </div>
+                <div class="rec-metric">
+                    <div class="rec-metric-label">Cost</div>
+                    <div class="rec-metric-value">{{ fastest_cost }}</div>
+                </div>
+                <div class="rec-metric">
+                    <div class="rec-metric-label">Speedup</div>
+                    <div class="rec-metric-value">{{ fastest.speedup }}x</div>
+                </div>
+                <div class="rec-metric">
+                    <div class="rec-metric-label">Range</div>
+                    <div class="rec-metric-value" style="font-size: 0.85rem;">{{ fastest_time_lower }}–{{ fastest_time_upper }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Crusoe GPU Comparison -->
+{% if crusoe_rows %}
+<div class="card card-full">
+    <h2><span class="icon">☁️</span> Crusoe Cloud GPU Comparison</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>GPU</th>
+                <th>Est. Training Time</th>
+                <th>Speedup</th>
+                <th>Est. Cost</th>
+                <th>CO₂ Emissions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Local row -->
+            <tr class="local-row">
+                <td class="gpu-name">📍 {{ gpu_name }} <small>(local)</small></td>
+                <td>
+                    <div class="bar-container">
+                        <div class="bar bar-local" style="width: 100%"></div>
+                    </div>
+                    <span class="value">{{ est_total_time }}</span>
+                    <span class="range-text">({{ est_total_time_lower }}–{{ est_total_time_upper }})</span>
+                </td>
+                <td><span style="color: var(--text-dim);">1.0x</span></td>
+                <td>
+                    <span class="value" style="color: var(--accent-orange);">{{ est_total_cost }}</span>
+                    <span class="rate">(electricity)</span>
+                </td>
+                <td class="co2-cell">
+                    <span style="color: var(--accent-red); font-weight: 600;">{{ est_total_co2 }}</span>
+                </td>
+            </tr>
+            <!-- Crusoe rows -->
+            {% for row in crusoe_rows %}
+            <tr class="{% if row.is_best_value %}best-row{% elif row.is_fastest %}fastest-row{% endif %}">
+                <td class="gpu-name">
+                    {{ row.name }}
+                    {% if row.is_best_value %}<span class="badge badge-value">💰 Best Value</span>{% endif %}
+                    {% if row.is_fastest %}<span class="badge badge-fast">⚡ Fastest</span>{% endif %}
+                </td>
+                <td>
+                    <div class="bar-container range-bar">
+                        <div class="bar-range" style="left: {{ row.time_lower_pct }}%; width: {{ row.time_range_pct }}%;"></div>
+                        <div class="bar bar-crusoe" style="width: {{ row.time_pct }}%"></div>
+                    </div>
+                    <span class="value">{{ row.time_fmt }}</span>
+                    <span class="range-text">({{ row.time_lower_fmt }}–{{ row.time_upper_fmt }})</span>
+                </td>
+                <td>
+                    <span class="speedup">{{ row.speedup }}x</span>
+                </td>
+                <td>
+                    <div class="bar-container">
+                        <div class="bar bar-cost" style="width: {{ row.cost_pct }}%"></div>
+                    </div>
+                    <span class="value">{{ row.cost_fmt }}</span>
+                    <span class="range-text">({{ row.cost_lower_fmt }}–{{ row.cost_upper_fmt }})</span>
+                    <span class="rate">({{ row.rate_fmt }}/hr)</span>
+                </td>
+                <td class="co2-cell">
+                    <span class="co2-zero">≈ 0 g CO₂</span>
+                    <span class="savings-badge">-100%</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+
+<!-- Carbon Savings on Crusoe -->
+<div class="card card-full">
+    <h2><span class="icon">�</span> Carbon Savings on Crusoe</h2>
+    <p style="color: var(--text-dim); font-size: 0.95rem; margin-bottom: 1rem;">
+        By training on Crusoe Cloud instead of locally, you would save approximately
+        <strong style="color: var(--crusoe-green);">{{ est_total_co2 }}</strong> of CO₂ emissions.
+        That's equivalent to:
+    </p>
+
+    {% if co2_equivalences %}
+    <div class="equiv-grid">
+        {% for eq in co2_equivalences %}
+        <div class="equiv-card">
+            <span class="equiv-icon">{{ eq.icon }}</span>
+            <div class="equiv-value">{{ eq.value_fmt }}</div>
+            <div class="equiv-unit">{{ eq.unit }}</div>
+            <div class="equiv-desc">{{ eq.description }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+
+<!-- Epoch Timing -->
+<div class="card card-full">
+    <h2><span class="icon">⏱️</span> Epoch Timing (Benchmark)</h2>
+    {% for ep in epoch_bars %}
+    <div class="epoch-row">
+        <span class="epoch-label">{{ ep.label }}</span>
+        <div class="bar-container">
+            <div class="bar {{ ep.bar_class }}" style="width: {{ ep.width_pct }}%"></div>
+        </div>
+        <span class="epoch-value">{{ ep.time_fmt }}</span>
+    </div>
+    {% endfor %}
+    <div class="epoch-summary">
+        Median: <strong>{{ median_epoch_time }}s</strong>
+        &nbsp;|&nbsp; Std: {{ std_epoch_time }}s
+        &nbsp;|&nbsp; CV: {{ cv_epoch_time }}%
+        ({{ variance_rating }})
+        {% if sample_data_pct_val < 100 %}
+        &nbsp;|&nbsp; Est. full-data epoch: <strong>{{ est_full_epoch_time }}</strong>
+        {% endif %}
+    </div>
+</div>
+
+
+</div><!-- grid -->
+
+<!-- Footer -->
+<div class="footer">
+    <p>Generated by <strong>green-love v{{ version }}</strong> •
+       Powered by <a href="https://crusoe.ai" target="_blank">Crusoe Cloud</a> •
+       100% Renewable Energy ♻️</p>
+    <p style="margin-top: 0.3rem;">
+        Estimates based on {{ benchmark_epochs }} sample epochs
+        ({{ sample_data_pct }}% data) extrapolated to {{ total_epochs }} epochs at 100% data.
+        {% if benchmark_task %}Benchmark task: {{ benchmark_task }}.{% endif %}
+        Actual performance may vary.
+    </p>
+    <p style="margin-top: 0.3rem;">
+        Carbon intensity: <span class="data-badge {% if carbon_source_live %}badge-live{% else %}badge-default{% endif %}">{{ carbon_intensity_source }}</span>
+        &nbsp; Electricity price: <span class="data-badge badge-default">{{ electricity_price_source }}</span>
+    </p>
+    <p style="margin-top: 0.3rem; font-size: 0.75rem;">{{ timestamp }}</p>
+</div>
+
+</div><!-- container -->
+</body>
+</html>

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Virtual environment
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Test / dev artifacts
+.pytest_cache/
+*.coverage
+htmlcov/
+
+# Generated reports (created at runtime)
+crusoe_reports/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Niko research folder (reference only)
+niko/
