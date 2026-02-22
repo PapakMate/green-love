@@ -32,4 +32,4 @@ __all__ = [
     "format_co2",
 ]
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"

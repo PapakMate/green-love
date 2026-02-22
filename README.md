@@ -225,9 +225,11 @@ Start with $(n, B_e) = (1000, 30)$ where $n$ is the initial sample size and $B_e
 
 **Algorithm (iterative):**
 
-1. If first epoch takes longer than **0.3 seconds**, stop and set $n_{\text{new}} = n / 10$, then retry from step 1.
-2. If the number of completed epochs is between **1 and 29** (i.e., at least one epoch completed but not all 30): $n_{\text{new}} = n \cdot \text{completed\_epochs}$. This is the **exit condition** — proceed to the multi-sample phase with $n_{\text{new}}$.
-3. If **all 30 epochs complete** (training is too fast): $n_{\text{new}} = n \cdot \frac{10}{\text{total\_training\_time\_in\_seconds}}$, then retry from step 1.
+Training begins with $n$ samples for up to $B_e$ epochs, but is **stopped after 0.3 seconds** of total wall-clock time. Based on how many epochs completed within that budget:
+
+1. If the **first epoch didn't finish** within 0.3 seconds, stop training and set $n_{\text{new}} = n / 10$, then retry from step 1.
+2. If the number of completed epochs is between **1 and 29** (i.e., at least one epoch completed but not all 30): stop training and set $n_{\text{new}} = n \cdot \text{completed\_epochs}$. This is the **exit condition** — proceed to the multi-sample phase with $n_{\text{new}}$.
+3. If **all 30 epochs complete** within the 0.3s budget (training is too fast): $n_{\text{new}} = n \cdot \frac{10}{\text{total\_training\_time\_in\_seconds}}$, then retry from step 1.
 
 The iteration repeats steps 1 and 3 until step 2 is reached, which produces the representative sample size.
 
