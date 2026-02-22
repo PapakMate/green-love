@@ -473,8 +473,8 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
         </div>
         <div class="savings-card">
             <div class="savings-icon">⚡</div>
-            <div class="savings-value">{{ best_value.speedup }}x</div>
-            <div class="savings-label">Faster ({{ best_value.name }})</div>
+            <div class="savings-value">{{ fastest.speedup }}x</div>
+            <div class="savings-label">Faster ({{ fastest.name }})</div>
         </div>
     </div>
 </div>
@@ -635,7 +635,7 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
 </div>
 
 
-<!-- Epoch Timing -->
+<!-- Epoch Timing (commented out)
 <div class="card card-full">
     <h2><span class="icon">⏱️</span> Epoch Timing (Benchmark)</h2>
     {% for ep in epoch_bars %}
@@ -657,6 +657,7 @@ tr.fastest-row td { background: rgba(56, 189, 248, 0.06); }
         {% endif %}
     </div>
 </div>
+-->
 
 
 </div><!-- grid -->

@@ -13,6 +13,14 @@ def _make_mock_results():
     """Create a mock BenchmarkResults for testing."""
 
     class MockResults:
+        # Multi-sample data
+        sample_sizes_used = [500, 750, 1125]
+        full_dataset_size = 10000
+        spearman_rho = 0.98
+        warmup_epoch_estimates = [20.0, 18.0, 16.0]
+        steady_epoch_estimate = 15.25
+        steady_epoch_std = 0.82
+
         epoch_times = [1.5, 1.6, 1.4, 1.55]
         warmup_times = [2.0, 1.8]
         median_epoch_time = 1.525

@@ -1,8 +1,8 @@
 """
 Green Love — PyTorch training cost & carbon analysis.
 
-Pure callback pattern: the user controls their training loop;
-the estimator only needs on_epoch_start / on_epoch_end calls.
+Uses adaptive multi-sample benchmarking to estimate training time,
+cost, and CO₂ emissions. Model and optimizer states are preserved.
 """
 
 from .estimator import GreenLoveEstimator, BenchmarkResults

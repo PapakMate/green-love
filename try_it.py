@@ -85,11 +85,17 @@ class HeavyResNet(nn.Module):
 
 # ─── Synthetic dataset ─────────────────────────────────────────────────────────
 
-def make_dataloader(n_samples: int = 8_000, batch_size: int = 64) -> DataLoader:
-    """Create a DataLoader with random 128×128 images."""
+def make_dataset(n_samples: int = 8_000) -> TensorDataset:
+    """Create a TensorDataset with random 128×128 images."""
     images = torch.randn(n_samples, 3, 128, 128)
     labels = torch.randint(0, 100, (n_samples,))
-    dataset = TensorDataset(images, labels)
+    return TensorDataset(images, labels)
+
+
+def make_dataloader(
+    dataset: TensorDataset, batch_size: int = 64
+) -> DataLoader:
+    """Wrap a dataset in a DataLoader."""
     return DataLoader(
         dataset,
         batch_size=batch_size,
@@ -131,47 +137,60 @@ def train(total_epochs: int = 500):
     n_params = sum(p.numel() for p in model.parameters())
     print(f"Model: HeavyResNet  |  Parameters: {n_params:,}")
 
-    loader = make_dataloader(n_samples=8_000, batch_size=64)
-    print(f"Batches per epoch:  {len(loader)}\n")
+    dataset = make_dataset(n_samples=8_000)
+    print(f"Dataset: {len(dataset)} samples\n")
 
     optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=total_epochs)
     criterion = nn.CrossEntropyLoss()
-    scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
 
     # ── Estimator setup ──────────────────────────────────────────────────────
+    # New API: pass model, optimizer, criterion, and dataset directly.
+    # The estimator runs adaptive multi-sample benchmarking automatically.
     estimator = GreenLoveEstimator(
+        model=model,
+        optimizer=optimizer,
+        criterion=criterion,
+        train_dataset=dataset,
         total_epochs=total_epochs,
-        sample_epochs_pct=1.0,
-        warmup_epochs=2,
+        batch_size=64,
+        device=str(device),
         benchmark_task="resnet50",
         precision="fp16",
         auto_open_report=True,
+        # Heavy model (18M params, 128×128 images):
+        #  - higher epoch budget (one forward/backward pass takes ~1s)
+        #  - fewer exploration epochs so each sample size stays under 20s
+        single_epoch_budget=5.0,
+        exploration_epochs=10,
     )
 
-    # ── Phase 1: Benchmark ───────────────────────────────────────────────────
-    # Estimator measures epoch timing, then generates a report and asks
-    # whether to continue locally or move to Crusoe Cloud.
-    for epoch in range(total_epochs):
-        estimator.on_epoch_start(epoch)
-        avg_loss, accuracy = train_epoch(model, loader, optimizer, criterion, scaler, device)
-        print(f"Epoch {epoch+1:3d}/{total_epochs}  loss={avg_loss:.4f}  acc={accuracy:.1f}%")
-        scheduler.step()
-        if not estimator.on_epoch_end(epoch):
-            break
+    # ── Run estimation ───────────────────────────────────────────────────────
+    # This automatically:
+    #   1. Finds a representative sample size
+    #   2. Trains at multiple sample sizes (n * 1.5^i)
+    #   3. Computes T(N, Be) = e1 + e2 + e3 + (Be-3) * Ae_bar
+    #   4. Generates report and prompts whether to continue
+    #   5. Restores model/optimizer to pre-benchmark state
+    results = estimator.estimate()
 
-    # ── Phase 2: Full training from scratch (if user chose to continue) ──────
+    # ── Full training from scratch (if user chose to continue) ───────────────
     if estimator.user_chose_continue:
-        print("\n🚀 Starting full training from epoch 1...\n")
-        model = HeavyResNet(num_classes=100).to(device)
-        optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=total_epochs)
+        print("\n🚀 Starting full training...\n")
+        loader = make_dataloader(dataset, batch_size=64)
         scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=total_epochs
+        )
 
         for epoch in range(total_epochs):
-            avg_loss, accuracy = train_epoch(model, loader, optimizer, criterion, scaler, device)
-            print(f"Epoch {epoch+1:3d}/{total_epochs}  loss={avg_loss:.4f}  acc={accuracy:.1f}%")
+            avg_loss, accuracy = train_epoch(
+                model, loader, optimizer, criterion, scaler, device
+            )
+            print(f"Epoch {epoch+1:3d}/{total_epochs}  "
+                  f"loss={avg_loss:.4f}  acc={accuracy:.1f}%")
             scheduler.step()
+
+    estimator.cleanup()
 
 
 if __name__ == "__main__":

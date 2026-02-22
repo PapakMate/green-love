@@ -36,6 +36,8 @@ This estimator works best with models whose training time scales **linearly** wi
 | **Transformers** (fixed seq length) | Fixed attention cost per sample |
 | **Fine-tuning** (BERT, GPT, etc.) | Standard SGD/Adam iteration |
 
+In general, this covers all models trained with **gradient descent** or **stochastic gradient descent (SGD)**, which accounts for the vast majority of modern machine learning models.
+
 **Not recommended** for: variable-length Transformers, Graph Neural Networks, KNN/kernel methods, models with dynamic computation graphs.
 
 ---
@@ -69,51 +71,48 @@ pip install -e ".[dev]"
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from green_love import GreenLoveEstimator, sample_dataloader
+from green_love import GreenLoveEstimator
 
-# Your model and data
+# Your model, optimizer, criterion, and dataset
 model = nn.Linear(784, 10).cuda()
 optimizer = torch.optim.Adam(model.parameters())
 criterion = nn.CrossEntropyLoss()
 
 dataset = TensorDataset(torch.randn(10000, 784), torch.randint(0, 10, (10000,)))
-full_loader = DataLoader(dataset, batch_size=64, shuffle=True)
 
-# Create estimator
-total_epochs = 100
+# Create estimator — pass model, optimizer, criterion, and dataset
 estimator = GreenLoveEstimator(
-    total_epochs=total_epochs,
-    sample_data_pct=10.0,      # benchmark on 10% of data
-    sample_epochs_pct=10.0,    # run 10% of epochs for benchmark
-    warmup_epochs=2,           # discard first 2 epochs
+    model=model,
+    optimizer=optimizer,
+    criterion=criterion,
+    train_dataset=dataset,
+    total_epochs=100,
+    batch_size=64,
 )
 
-# Create a sampled dataloader for the benchmark phase
-benchmark_loader = sample_dataloader(full_loader, sample_pct=10.0)
+# Run estimation — automatically benchmarks at multiple sample sizes,
+# generates an HTML report, and prompts whether to continue
+results = estimator.estimate()
 
-for epoch in range(total_epochs):
-    estimator.on_epoch_start(epoch)
-
-    # Use sampled data during benchmark, full data after
-    loader = benchmark_loader if estimator.is_benchmarking else full_loader
-
-    for x, y in loader:
-        x, y = x.cuda(), y.cuda()
-        optimizer.zero_grad()
-        loss = criterion(model(x), y)
-        loss.backward()
-        optimizer.step()
-
-    # on_epoch_end returns False if user chooses to stop
-    if not estimator.on_epoch_end(epoch):
-        break
+# If user chose to continue training locally
+if estimator.user_chose_continue:
+    loader = DataLoader(dataset, batch_size=64, shuffle=True)
+    for epoch in range(100):
+        model.train()
+        for x, y in loader:
+            x, y = x.cuda(), y.cuda()
+            optimizer.zero_grad()
+            loss = criterion(model(x), y)
+            loss.backward()
+            optimizer.step()
 
 estimator.cleanup()
 ```
 
-After the benchmark epochs complete:
+After estimation completes:
 1. An **HTML report** opens in your browser with full cost/time/CO₂ analysis
 2. The **terminal** shows a summary and prompts: `Continue training locally? [y/N]`
+3. Model and optimizer are **restored** to their pre-benchmark state
 
 ---
 
@@ -196,15 +195,67 @@ Since per-epoch time is proportional to the number of samples processed:
 
 $$e_i(N) \approx e_i(n) \cdot \frac{N}{n}$$
 
-This is what makes the "smart data" approach work — we can train on just 10% of the data and multiply the measured epoch time by 10 to get the full-data estimate, with high accuracy.
+Green Love trains on **multiple sample sizes** $k_1, k_2, \ldots, k_m$ and scales each measurement to the full dataset size $N$. This cross-sample averaging produces more robust estimates than a single sample size:
+
+$$\bar{A}_e(N) = \text{mean}\!\left(e_{i,k} \cdot \frac{N}{k}\right) \quad \text{for all sample sizes } k \text{ and epochs } i > 3$$
+
+Similarly, the three warmup epochs are estimated independently:
+
+$$e_j(N) = \text{mean}\!\left(e_{j,k} \cdot \frac{N}{k}\right) \quad \text{for } j \in \{1, 2, 3\}$$
+
+The standard deviation used for confidence intervals is also computed from these cross-sample scaled values:
+
+$$\sigma(N) = \text{std}\!\left(e_{i,k} \cdot \frac{N}{k}\right)$$
 
 ### Confidence Intervals
 
-By the Central Limit Theorem, the confidence interval for total training time is:
+The dataset of scaled epoch times $e_{i,k} \cdot N/k$ (for all epochs $i$ and all sample sizes $k$) is large — typically hundreds of data points. By the Central Limit Theorem, the normal distribution is sufficient and no t-distribution correction is needed.
 
-$$\bar{A}_e(n) \cdot B_e \;\pm\; \sqrt{B_e} \cdot \sigma(n) \cdot z_{\alpha}$$
+The 95% confidence interval for total training time is:
 
-where $\sigma(n)$ is the standard deviation of epoch times scaled to sample size $n$. Green Love uses Student's t-distribution for 95% confidence intervals, which is more accurate than the normal approximation when working with the small number of benchmark epochs we deliberately keep low to save time.
+$$\bar{A}_e(N) \cdot B_e \;\pm\; \sqrt{B_e} \cdot \sigma(N) \cdot z_{0.025}$$
+
+where $z_{0.025} = 1.96$ is the standard normal critical value and $\sigma(N)$ is the standard deviation of $e_{i,k} \cdot N/k$ over all post-warmup epochs $i$ and all sample sizes $k$.
+
+### Choosing a Representative Sample Size
+
+The sample size must be large enough to be representative while still allowing fast estimation. Green Love automatically finds a good sample size using this algorithm:
+
+Start with $(n, B_e) = (1000, 30)$ where $n$ is the initial sample size and $B_e$ is the number of exploration epochs.
+
+**Algorithm (iterative):**
+
+1. If first epoch takes longer than **0.3 seconds**, stop and set $n_{\text{new}} = n / 10$, then retry from step 1.
+2. If the number of completed epochs is between **1 and 29** (i.e., at least one epoch completed but not all 30): $n_{\text{new}} = n \cdot \text{completed\_epochs}$. This is the **exit condition** — proceed to the multi-sample phase with $n_{\text{new}}$.
+3. If **all 30 epochs complete** (training is too fast): $n_{\text{new}} = n \cdot \frac{10}{\text{total\_training\_time\_in\_seconds}}$, then retry from step 1.
+
+The iteration repeats steps 1 and 3 until step 2 is reached, which produces the representative sample size.
+
+### Sampling Strategy
+
+Once the representative $n$ is found (with its epoch times already saved), Green Love collects data at additional sample sizes in two directions:
+
+**Scaling up** — starting from $n$, multiply by 1.5 repeatedly:
+$$n,\; \lfloor n \cdot 1.5 \rfloor,\; \lfloor n \cdot 1.5^2 \rfloor,\; \ldots$$
+Train and log at each size. Repeat while total training time stays **below 20 seconds**. When training time **exceeds 20 seconds**, log that final run too, then stop scaling up.
+
+**Scaling down** — starting from the original $n$, divide by 1.5 repeatedly:
+$$\lfloor n / 1.5 \rfloor,\; \lfloor n / 1.5^2 \rfloor,\; \ldots$$
+Train and log at each size. Repeat while total training time stays **above 1 second**. When training time **falls below 1 second**, log that final run too, then stop scaling down.
+
+This typically produces **9–10 data points**, sufficient for reliable estimation.
+
+### Maximum Runtime Bound
+
+Assuming worst case where the upper limit (20 seconds) is included and scaled by 1.5:
+
+$$30 + 20 + 13.3 + \ldots + 20 \cdot 1.5^{-8} < 90 \text{ seconds} \approx 1.5 \text{ minutes}$$
+
+The entire multi-sample benchmark completes in **under 90 seconds**.
+
+### Final Validation
+
+Green Love verifies the linear relationship between sample size and training time using **Spearman rank correlation**. A high correlation ($\rho > 0.9$) confirms the linear scaling assumption holds for your specific model and dataset. If correlation is low, a warning is displayed.
 
 ---
 
@@ -212,10 +263,19 @@ where $\sigma(n)$ is the standard deviation of epoch times scaled to sample size
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
+| `model` | `nn.Module` | **required** | PyTorch model to benchmark |
+| `optimizer` | `Optimizer` | **required** | Optimizer used for training |
+| `criterion` | `nn.Module` | **required** | Loss function |
+| `train_dataset` | `Dataset` | **required** | Full training dataset |
 | `total_epochs` | `int` | **required** | Total planned training epochs |
-| `sample_data_pct` | `float` | `100.0` | % of data used during benchmark |
-| `sample_epochs_pct` | `float` | `10.0` | % of epochs to run before estimating |
-| `warmup_epochs` | `int` | `2` | Epochs to discard from timing |
+| `batch_size` | `int` | `64` | Batch size for training |
+| `device` | `str` | auto-detect | Device (`"cuda"` or `"cpu"`) |
+| `train_step` | `callable` | `None` | Custom training step function |
+| `exploration_epochs` | `int` | `30` | Epochs per sample size during exploration |
+| `warmup_epochs` | `int` | `3` | First N epochs treated as warmup |
+| `target_benchmark_time` | `float` | `10.0` | Target seconds for representative sample |
+| `initial_sample_size` | `int` | `1000` | Starting sample size for exploration |
+| `single_epoch_budget` | `float` | `0.3` | Max seconds per epoch in exploration |
 | `country_code` | `str` | auto-detect | ISO country code (e.g., `"US"`, `"DE"`) |
 | `carbon_intensity` | `float` | auto-lookup | Grid carbon intensity (gCO₂/kWh) |
 | `electricity_price` | `float` | auto-lookup | Electricity price ($/kWh) |
@@ -249,6 +309,10 @@ Override benchmark-based speed estimation for specific GPUs:
 
 ```python
 estimator = GreenLoveEstimator(
+    model=model,
+    optimizer=optimizer,
+    criterion=criterion,
+    train_dataset=dataset,
     total_epochs=100,
     custom_speedup={
         "H100 HGX 80GB": 2.5,    # your measured speedup
@@ -261,6 +325,10 @@ estimator = GreenLoveEstimator(
 
 ```python
 estimator = GreenLoveEstimator(
+    model=model,
+    optimizer=optimizer,
+    criterion=criterion,
+    train_dataset=dataset,
     total_epochs=100,
     country_code="DE",           # Germany
     carbon_intensity=332,        # gCO₂/kWh
@@ -274,17 +342,20 @@ estimator = GreenLoveEstimator(
 
 ## How It Works
 
-1. **Benchmark Phase**: Runs `benchmark_epochs` on `sample_data_pct`% of data
-2. **Warmup Discard**: First `warmup_epochs` are excluded from timing (they are consistently slower due to initialization)
-3. **Median Timing**: Takes median of measured epoch times (robust to outliers and RAM spikes)
-4. **Linear Scaling**: `median_epoch_time × (100 / sample_data_pct)` to estimate full-data epoch
-5. **Total Estimate**: `full_data_epoch × total_epochs`
-6. **Confidence Intervals**: 95% CI via Student's t-distribution
-7. **Power Monitoring**: GPU power sampled via NVML → total energy (kWh)
-8. **CO₂ & Cost**: Energy × grid carbon intensity / electricity price (offline tables for 70+ countries, or live via Electricity Maps API)
-9. **Crusoe Comparison**: Speed ratios from Lambda Labs benchmarks (or TFLOPS+bandwidth weighted fallback) → estimated time, cost, CO₂ for each Crusoe GPU
-10. **Report**: Interactive HTML dashboard with CSS-only visualizations
-11. **Prompt**: Terminal prompt to continue training or stop
+1. **Save State**: Model and optimizer states are deep-copied for restoration after benchmarking
+2. **Find Representative Sample Size**: Starting from $n = 1000$, iteratively adjusts sample size until training 30 epochs takes ~10 seconds (see algorithm above)
+3. **Multi-Sample Training**: From representative $n$, scales up (×1.5) until training > 20s, then scales down (÷1.5) until training < 1s, logging all runs
+4. **Warmup Separation**: First 3 epochs of each run are modeled separately (they include initialization overhead)
+5. **Cross-Sample Scaling**: Each measured epoch time is scaled to the full dataset: $e_{i,k} \cdot N/k$. The mean across all sample sizes and post-warmup epochs gives $\bar{A}_e(N)$
+6. **Total Estimate**: $T(N, B_e) = e_1(N) + e_2(N) + e_3(N) + (B_e - 3) \cdot \bar{A}_e(N)$
+7. **Confidence Intervals**: 95% CI via normal distribution: $T \pm \sqrt{B_e} \cdot \sigma(N) \cdot 1.96$
+8. **Spearman Validation**: Verifies linear scaling assumption with rank correlation
+9. **Restore State**: Model and optimizer are restored to pre-benchmark state
+10. **Power Monitoring**: GPU power sampled via NVML → total energy (kWh)
+11. **CO₂ & Cost**: Energy × grid carbon intensity / electricity price (offline tables for 70+ countries, or live via Electricity Maps API)
+12. **Crusoe Comparison**: Speed ratios from Lambda Labs benchmarks (or TFLOPS+bandwidth weighted fallback) → estimated time, cost, CO₂ for each Crusoe GPU
+13. **Report**: Interactive HTML dashboard with CSS-only visualizations
+14. **Prompt**: Terminal prompt to continue training or stop
 
 ---
 
@@ -301,6 +372,17 @@ When your local GPU is NOT in the benchmark table, Green Love uses a weighted fo
 $$\text{speedup} = 0.7 \times \frac{\text{TFLOPS}_{\text{cloud}}}{\text{TFLOPS}_{\text{local}}} + 0.3 \times \frac{\text{BW}_{\text{cloud}}}{\text{BW}_{\text{local}}}$$
 
 This covers 50+ GPU models including consumer cards (RTX 3050, 3060, etc.) that lack published benchmarks.
+
+---
+
+## Future Directions
+
+Our architecture is designed to extend naturally — with more time, proper data, and a Crusoe partnership, these are realistic next steps:
+
+- **Live Crusoe benchmarking via API**: Instead of relying on published benchmark ratios, we could run actual training on Crusoe GPUs through their API and feed real timing data back into our estimator. We built the infrastructure for this but were unable to test it without an API key.
+- **Hardware-specific Crusoe profiles**: With access to detailed Crusoe hardware specs (interconnect topology, memory bandwidth under load, multi-GPU scaling factors), our estimation model could produce significantly more accurate cloud predictions.
+- **Multi-framework support**: The linear-scaling model generalizes beyond PyTorch — extending to TensorFlow, scikit-learn, Keras, and other frameworks is a natural next step with additional engineering effort.
+- **Full pipeline estimation**: Our approach can be extended to cover validation time, data preprocessing overhead, and CPU usage — completing the picture from raw data to trained model.
 
 ---
 

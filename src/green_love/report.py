@@ -259,6 +259,11 @@ def build_report_context(results) -> Dict[str, Any]:
             f"Only {r.sample_data_pct:.1f}% of data sampled. "
             "Estimates may be less accurate with very small samples."
         )
+    if hasattr(r, 'spearman_rho') and r.spearman_rho < 0.9:
+        warnings.append(
+            f"Spearman ρ = {r.spearman_rho:.3f} — linear scaling "
+            "may not hold for this model. Estimates could be unreliable."
+        )
 
     # Savings overview (vs best value Crusoe option)
     time_saved = ""

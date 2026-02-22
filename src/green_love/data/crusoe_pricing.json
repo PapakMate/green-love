@@ -64,7 +64,7 @@
     },
     "MI300X 192GB": {
       "vram_gb": 192,
-      "on_demand_per_gpu_hr": 3.45,
+      "on_demand_per_gpu_hr": 3.25,
       "spot_per_gpu_hr": 0.95,
       "benchmark_key": "H100 80GB SXM5",
       "scale_factor": 1.0,
